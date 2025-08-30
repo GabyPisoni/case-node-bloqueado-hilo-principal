@@ -2,7 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 
 @Controller()
 export class BlockingController {
-  
+
   private requestCount = 0;
   private startTime = Date.now();
 
@@ -17,20 +17,20 @@ export class BlockingController {
   }
 
   @Get('blocking')
-  blockingOperation(@Query('iterations') iterations: string = '10000000') {
+ async blockingOperation(@Query('iterations') iterations: string = '10000000') {
     this.requestCount++;
     const startTime = Date.now();
-    
+
     console.log(`🚨 Iniciando operación bloqueante con ${iterations} iteraciones...`);
-    
+
     // Esta operación bloqueará el thread principal
-    const result = this.heavyComputation(parseInt(iterations));
-    
+    const result = await this.heavyComputation(parseInt(iterations));
+
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
+
     console.log(`✅ Operación completada en ${duration}ms`);
-    
+
     return {
       message: 'Operación bloqueante completada',
       result: result,
@@ -44,16 +44,16 @@ export class BlockingController {
   fibonacciBlocking(@Query('n') n: string = '40') {
     this.requestCount++;
     const startTime = Date.now();
-    
+
     console.log(`🚨 Calculando Fibonacci(${n}) de forma bloqueante...`);
-    
+
     const result = this.calculateFibonacci(parseInt(n));
-    
+
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
+
     console.log(`✅ Fibonacci(${n}) = ${result} completado en ${duration}ms`);
-    
+
     return {
       message: 'Cálculo de Fibonacci completado',
       n: parseInt(n),
@@ -63,22 +63,25 @@ export class BlockingController {
     };
   }
 
-  private heavyComputation(iterations: number): number {
-    let result = 0;
-    
-    // Operación intensiva que bloquea el thread principal
-    for (let i = 0; i < iterations; i++) {
-      result += Math.sqrt(i) * Math.sin(i) * Math.cos(i);
-      
-      // Cada 1000000 iteraciones, hacer una operación adicional para aumentar la carga
-      if (i % 1000000 === 0) {
-        for (let j = 0; j < 1000; j++) {
-          result += Math.pow(j, 2);
-        }
+  private async heavyComputation(iterations: number): Promise<any> {
+    //Por trozos
+    const chunkSize = 10000;
+    const totalChucnks = Math.ceil(iterations / chunkSize);
+    let totalResult = 0;
+    let chunk;
+    // Este for es el que divide cuantos chunks se haran y el segundo se encarga del rango
+    for (chunk = 0; chunk < totalChucnks; chunk++) {
+      const startIndex = chunk * chunkSize;
+      const endIndex = Math.min(startIndex + chunkSize, iterations);
+      //Este for se encarga del por cada iteracion del primero del rango de cada chunk
+      for (let i = startIndex; i < endIndex; i++) {
+        //En esta logica haria lo que tiene que hacer por parter
+        totalResult += Math.sqrt(i) * Math.sin(i) * Math.cos(i);
       }
+      //La asincronia pausa para que el thread principal no se bloquee y pueda hacer otra operacion
+      await new Promise(resolve => setTimeout(resolve, 0));
     }
-    
-    return result;
+    return totalResult;
   }
 
   private calculateFibonacci(n: number): number {
