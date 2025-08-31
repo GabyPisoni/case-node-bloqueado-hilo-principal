@@ -1,10 +1,16 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Inject } from '@nestjs/common';
+import { WorkerService } from './utils/thread-worker';
+import { IWorkerService } from './utils/IWorkerServie';
 
 @Controller()
 export class BlockingController {
 
   private requestCount = 0;
   private startTime = Date.now();
+  
+  constructor(
+    @Inject(IWorkerService) private readonly threadWorkerService: IWorkerService
+  ) {}
 
   @Get('status')
   getStatus() {
@@ -63,25 +69,18 @@ export class BlockingController {
     };
   }
 
-  private async heavyComputation(iterations: number): Promise<any> {
-    //Por trozos
-    const chunkSize = 10000;
-    const totalChucnks = Math.ceil(iterations / chunkSize);
-    let totalResult = 0;
-    let chunk;
-    // Este for es el que divide cuantos chunks se haran y el segundo se encarga del rango
-    for (chunk = 0; chunk < totalChucnks; chunk++) {
-      const startIndex = chunk * chunkSize;
-      const endIndex = Math.min(startIndex + chunkSize, iterations);
-      //Este for se encarga del por cada iteracion del primero del rango de cada chunk
-      for (let i = startIndex; i < endIndex; i++) {
-        //En esta logica haria lo que tiene que hacer por parter
-        totalResult += Math.sqrt(i) * Math.sin(i) * Math.cos(i);
-      }
-      //La asincronia pausa para que el thread principal no se bloquee y pueda hacer otra operacion
-      await new Promise(resolve => setTimeout(resolve, 0));
-    }
-    return totalResult;
+ private async heavyComputation(iterations: number): Promise<any> {
+    console.log(`🔧 heavyComputation: Delegando al WorkerService con ${iterations} iteraciones`);
+    console.log(`⏰ Thread principal sigue libre: ${new Date().toISOString()}`);
+    
+    // Usar el worker service internamente
+    const result = await this.threadWorkerService.processEvent({
+      type: 'HEAVY_COMPUTATION',
+      iterations: iterations
+    });
+    
+    console.log(`🔧 heavyComputation: WorkerService completó, resultado recibido`);
+    return result;
   }
 
   private calculateFibonacci(n: number): number {
