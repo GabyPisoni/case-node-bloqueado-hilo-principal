@@ -17,7 +17,7 @@ export class BlockingController {
   }
 
   @Get('blocking')
- async blockingOperation(@Query('iterations') iterations: string = '10000000') {
+  async blockingOperation(@Query('iterations') iterations: string = '10000000') {
     this.requestCount++;
     const startTime = Date.now();
 
@@ -64,24 +64,20 @@ export class BlockingController {
   }
 
   private async heavyComputation(iterations: number): Promise<any> {
-    //Por trozos
-    const chunkSize = 10000;
-    const totalChucnks = Math.ceil(iterations / chunkSize);
-    let totalResult = 0;
-    let chunk;
-    // Este for es el que divide cuantos chunks se haran y el segundo se encarga del rango
-    for (chunk = 0; chunk < totalChucnks; chunk++) {
-      const startIndex = chunk * chunkSize;
-      const endIndex = Math.min(startIndex + chunkSize, iterations);
-      //Este for se encarga del por cada iteracion del primero del rango de cada chunk
-      for (let i = startIndex; i < endIndex; i++) {
-        //En esta logica haria lo que tiene que hacer por parter
-        totalResult += Math.sqrt(i) * Math.sin(i) * Math.cos(i);
+    let result = 0;
+    // Operación intensiva que bloquea el thread principal
+    for (let i = 0; i < iterations; i++) {
+      result += Math.sqrt(i) * Math.sin(i) * Math.cos(i);
+      //Al ser asincrono, permite que el event loop pueda hacer otras tareas y no se bloquee
+      await new Promise(resolve => setTimeout(resolve, 0))
+      // Cada 1000000 iteraciones, hacer una operación adicional para aumentar la carga
+      if (i % 1000000 === 0) {
+        for (let j = 0; j < 1000; j++) {
+          result += Math.pow(j, 2);
+        }
       }
-      //La asincronia pausa para que el thread principal no se bloquee y pueda hacer otra operacion
-      await new Promise(resolve => setTimeout(resolve, 0));
+
     }
-    return totalResult;
   }
 
   private calculateFibonacci(n: number): number {
