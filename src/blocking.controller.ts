@@ -1,5 +1,4 @@
 import { Controller, Get, Query, Inject } from '@nestjs/common';
-import { WorkerService } from './utils/thread-worker';
 import { IWorkerService } from './utils/IWorkerServie';
 
 @Controller()
